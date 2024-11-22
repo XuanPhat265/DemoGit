@@ -12,7 +12,9 @@ export default function NotFoundScreen() {
         <Link href="./" style={styles.link}>
           <ThemedText type="link">Chào mừng các bạn đến với XuanPhat Shop!</ThemedText>
         </Link>
+        <ThemedText type="link">Chạm để tiếp tục</ThemedText>
       </ThemedView>
+      
     </>
   );
 }

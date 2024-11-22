@@ -16,16 +16,6 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
       }}>
-      
-      {/* <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'code-slash' : 'code-slash-outline'} color={color} />
-          ),
-        }}
-      /> */}
 
 <Tabs.Screen
         name="Register"
@@ -69,7 +59,7 @@ export default function TabLayout() {
         }}
       />  
       <Tabs.Screen
-        name="ProductDetailScreen"
+        name="Payment"
         options={{
           title: 'Thanh toán',
           tabBarIcon: ({ color, focused }) => (
@@ -81,7 +71,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="ProductDetail"
         options={{
-          title: 'Chi tiết sản phẩm',
+          title: 'Chi tiết',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon  name="reorder-three" size={24} color={color} />
             

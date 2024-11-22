@@ -24,7 +24,7 @@ const Header: React.FC = () => {
         <View style={styles.authContainer}>
         </View>
         <View style={styles.iconContainer}>
-          <TouchableOpacity style={styles.iconButton}>
+          {/* <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="chatbubble-outline" size={24} color="black" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.cartButton}>
@@ -32,7 +32,7 @@ const Header: React.FC = () => {
             <View style={styles.badge}>
               <Text style={styles.badgeText}>3</Text>
             </View>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
     </View>

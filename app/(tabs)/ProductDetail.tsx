@@ -1,154 +1,183 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  View,Text, Image, StyleSheet, ScrollView, TouchableOpacity, FlatList, Dimensions, } from "react-native";
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+  ActivityIndicator,
+} from "react-native";
+import Header from "./Header";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Toast from "react-native-toast-message";
 
 const { width } = Dimensions.get("window");
+const CART_KEY = "cartItems";
 
-const ProductDetail = ({ navigation }) => {
-  const [selectedSize, setSelectedSize] = useState(null);
+const ProductDetail = () => {
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [isAddedToCart, setIsAddedToCart] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { productId } = route.params;
 
-  const product = {
-    id: "1",
-    name: "Nike Blazer Mid 1",
-    price: 1110000,
-    salePrice: 999000,
-    soldCount: 1500,
-    image: require("../../assets/images/1.png"),
-    description: "",
-    sizes: ["37","38","39", "40", "41", "42"],
+  useEffect(() => {
+    fetchProductDetails();
+  }, [productId]);
+
+  const fetchProductDetails = async () => {
+    try {
+      const response = await fetch(`https://fakestoreapi.com/products/${productId}`);
+      const data = await response.json();
+      setProduct(data);
+      setLoading(false);
+      fetchRelatedProducts(data.category); // Fetch related products based on the category
+    } catch (err) {
+      setError("Failed to fetch product details");
+      setLoading(false);
+    }
   };
 
-  const relatedProducts = [
-    {
-      id: "2",
-      name: "Pegasus 1",
-      price: 1400000,
-      image: require("../../assets/images/loai2_1.jpg"),
-    },
-    {
-      id: "3",
-      name: "Nike Blazer Low",
-      price: 1000000,
-      image: require("../../assets/images/loai2_2.jpg"),
-    },
-    {
-      id: "4",
-      name: "Nike Cotez 4 Shoes",
-      price: 1150000,
-      image: require("../../assets/images/loai2_3.jpg"),
-    },
-  ];
+  const fetchRelatedProducts = async (category) => {
+    try {
+      const response = await fetch(`https://fakestoreapi.com/products/category/${category}`);
+      const data = await response.json();
+      const related = data.filter((item) => item.id !== productId);
+      setRelatedProducts(related);
+    } catch (err) {
+      console.error("Failed to fetch related products:", err);
+    }
+  };
 
-  const renderRelatedProduct = ({ item }) => (
-    <View style={styles.relatedProductItem}>
-      <Image source={item.image} style={styles.relatedProductImage} />
-      <Text style={styles.relatedProductName}>{item.name}</Text>
-      <Text style={styles.relatedProductPrice}>
-        {item.price.toLocaleString("vi-VN")} ₫
-      </Text>
-    </View>
-  );
+  const increaseQuantity = () => setQuantity((prevQuantity) => prevQuantity + 1);
+  const decreaseQuantity = () => setQuantity((prevQuantity) => Math.max(1, prevQuantity - 1));
 
-  const increaseQuantity = () =>
-    setQuantity((prevQuantity) => prevQuantity + 1);
-  const decreaseQuantity = () =>
-    setQuantity((prevQuantity) => Math.max(1, prevQuantity - 1));
+  const handleAddToCart = async () => {
+    try {
+      const existingCart = await AsyncStorage.getItem(CART_KEY);
+      const cartItems = existingCart ? JSON.parse(existingCart) : [];
+
+      const existingItemIndex = cartItems.findIndex((item) => item.productId === product.id);
+      if (existingItemIndex > -1) {
+        cartItems[existingItemIndex].quantity += quantity;
+      } else {
+        cartItems.push({ productId: product.id, quantity });
+      }
+
+      await AsyncStorage.setItem(CART_KEY, JSON.stringify(cartItems));
+      setIsAddedToCart(true);
+      Toast.show({
+        text1: "Sản phẩm đã được thêm vào giỏ hàng!",
+        type: "success",
+        position: "bottom",
+        visibilityTime: 3000,
+      });
+    } catch (error) {
+      console.error("Error adding item to cart:", error);
+    }
+  };
+
+  const handleBuyNow = () => {
+    navigation.navigate("checkout", { product, quantity });
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FF6600" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
+        <Header navigation={navigation} />
         <ScrollView style={styles.scrollView}>
           <View style={styles.imageContainer}>
             <Image
-              source={product.image}
+              source={{ uri: product.image }}
               style={styles.productImage}
               resizeMode="contain"
             />
           </View>
+
+          {/* Category placed directly below the image */}
+          <Text style={styles.category}>{product.category}</Text>
+
           <View style={styles.infoContainer}>
-            <Text style={styles.productName}>{product.name}</Text>
+            <Text style={styles.productName}>{product.title}</Text>
+            
             <View style={styles.priceContainer}>
-              <View style={styles.priceWrapper}>
-                 <Text
-                  style={[
-                    styles.price,
-                    product.salePrice && styles.strikethrough,
-                  ]}
-                >
-                  {product.price.toLocaleString("vi-VN")} ₫
-                </Text>
-                {product.salePrice && (
-                  <Text style={styles.salePrice}>
-                    {product.salePrice.toLocaleString("vi-VN")} ₫
-                  </Text>
-                )}
-              </View>
-              <Text style={styles.soldCount}>Đã bán: {product.soldCount}</Text>
-            </View>
-<Text style={styles.sectionTitle}>Size:</Text>
-            <View style={styles.sizeContainer}>
-              {product.sizes.map((size) => (
-                <TouchableOpacity
-                  key={size}
-                  style={[
-                    styles.sizeButton,
-                    selectedSize === size && styles.selectedSizeButton,
-                  ]}
-                  onPress={() => setSelectedSize(size)}
-                >
-                  <Text
-                    style={[
-                      styles.sizeButtonText,
-                      selectedSize === size && styles.selectedSizeButtonText,
-                    ]}
-                  >
-                    {size}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              <Text style={styles.price}>${product.price.toFixed(2)}</Text>
             </View>
 
             <Text style={styles.sectionTitle}>Số lượng:</Text>
             <View style={styles.quantityContainer}>
-              <TouchableOpacity
-                onPress={decreaseQuantity}
-                style={styles.quantityButton}
-              >
+              <TouchableOpacity onPress={decreaseQuantity} style={styles.quantityButton}>
                 <Text style={styles.quantityButtonText}>-</Text>
               </TouchableOpacity>
               <Text style={styles.quantityText}>{quantity}</Text>
-              <TouchableOpacity
-                onPress={increaseQuantity}
-                style={styles.quantityButton}
-              >
+              <TouchableOpacity onPress={increaseQuantity} style={styles.quantityButton}>
                 <Text style={styles.quantityButtonText}>+</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.sectionTitle}>Mô tả sản phẩm:  Giày Jordan 1 được trang bị bộ đệm trứ danh của nhà Nike là đệm “Air” ở gót chân tạo sự thoải mái. Mũi giày đầy đặn, cứng dáng. Với form dáng lên vô cùng chuẩn giúp bảo vệ các đầu ngón chân của bạn một cách tốt nhất. Phần cổ giày được thiết kế vô cùng đơn giản, vừa vặn giúp bạn di chuyển dễ dàng. Đế giày của thương hiệu này được làm bằng chất liệu cao su, chống trơn trượt vô cùng tốt.</Text>
+            <Text style={styles.sectionTitle}>Mô tả sản phẩm:</Text>
             <Text style={styles.description}>{product.description}</Text>
 
-            <Text style={styles.sectionTitle}>Sản phẩm liên quan:</Text>
-            <FlatList
-              data={relatedProducts}
-              renderItem={renderRelatedProduct}
-              keyExtractor={(item) => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            />
-
             <View style={styles.buttonContainer}>
-              <TouchableOpacity style={styles.cartButton}>
-                <Text style={styles.cartButtonText}>Thêm vào giỏ hàng</Text>
+              <TouchableOpacity style={styles.cartButton} onPress={handleAddToCart}>
+                <Text style={styles.cartButtonText}>
+                  {isAddedToCart ? "Đã thêm vào giỏ hàng" : "Thêm vào giỏ hàng"}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.buyButton}>
+              <TouchableOpacity style={styles.buyButton} onPress={handleBuyNow}>
                 <Text style={styles.buyButtonText}>Mua ngay</Text>
               </TouchableOpacity>
             </View>
+
+            <Text style={styles.sectionTitle}>Sản phẩm liên quan:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {relatedProducts.map((relatedProduct) => (
+                <TouchableOpacity
+                  key={relatedProduct.id}
+                  style={styles.relatedProductItem}
+                  onPress={() => navigation.navigate("ProductDetail", { productId: relatedProduct.id })}
+                >
+                  <Image
+                    source={{ uri: relatedProduct.image }}
+                    style={styles.relatedProductImage}
+                    resizeMode="cover"
+                  />
+                  <Text style={styles.relatedProductName} numberOfLines={1}>
+                    {relatedProduct.title}
+                  </Text>
+                  <Text style={styles.relatedProductPrice}>
+                    ${relatedProduct.price.toFixed(2)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </ScrollView>
+        <Toast ref={(ref) => Toast.setRef(ref)} />
       </View>
     </SafeAreaView>
   );
@@ -157,6 +186,7 @@ const ProductDetail = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0000',
   },
   content: {
     flex: 1,
@@ -175,12 +205,23 @@ const styles = StyleSheet.create({
     width: width * 0.8,
     height: "100%",
   },
+  category: {
+    fontSize: 14,
+    color: "#888",
+    textAlign: "center",
+    marginVertical: 10,
+  },
   infoContainer: {
     padding: 15,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    elevation: 5,
   },
   productName: {
-    fontSize: 15,
+    fontSize: 18,
     marginBottom: 10,
+    fontWeight: "bold",
   },
   priceContainer: {
     flexDirection: "row",
@@ -188,40 +229,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   price: {
-    fontSize: 15,
+    fontSize: 16,
     color: "#888",
   },
-  strikethrough: {
-    textDecorationLine: "line-through",
-    marginRight: 10,
-  },
-  salePrice: {
-    fontSize: 15,
-    color: "#FF6347",
-  },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 16,
     marginTop: 15,
     marginBottom: 6,
-  },
-  sizeContainer: {
-    flexDirection: "row",
-    marginBottom: 10,
-  },
-  sizeButton: {
-    borderWidth: 1,
-    borderColor: "black",
-    padding: 10,
-    marginRight: 10,
-  },
-  selectedSizeButton: {
-    borderColor: "#FF6600",
-  },
-  sizeButtonText: {
-    fontSize: 10,
-  },
-  selectedSizeButtonText: {
-    color: "#FF6600",
+    fontWeight: "bold",
+    color: "black",
   },
   quantityContainer: {
     flexDirection: "row",
@@ -229,41 +245,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   quantityButton: {
-    width: 23,
-    height: 23,
+    width: 30,
+    height: 30,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
   },
   quantityButtonText: {
     color: "black",
-    fontSize: 15,
+    fontSize: 18,
   },
   quantityText: {
-    fontSize: 15,
+    fontSize: 18,
     marginHorizontal: 10,
   },
   description: {
-    fontSize: 15,
+    fontSize: 14,
     lineHeight: 24,
     marginBottom: 10,
-  },
-  relatedProductItem: {
-    marginRight: 15,
-    width: 100,
-  },
-  relatedProductImage: {
-    width: 100,
-    height: 100,
-    resizeMode: "cover",
-    borderRadius: 5,
-  },
-  relatedProductName: {
-    fontSize: 15,
-    marginTop: 5,
-  },
-  relatedProductPrice: {
-    fontSize: 14,
-    color: "#888",
   },
   buttonContainer: {
     flexDirection: "row",
@@ -271,44 +272,62 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   cartButton: {
-    backgroundColor: "#FFCC99", // Light orange color for the cart button
+    backgroundColor: "#FFCC99",
     padding: 15,
     borderRadius: 5,
     alignItems: "center",
     marginRight: 10,
-    borderWidth: 2, // Border thickness
-    borderColor: "#FF6600", // Border color
-  },
-
-  cartButtonText: {
-    color: "#FF6600",
-    fontSize: 15,
+    flex: 1,
   },
   buyButton: {
-    backgroundColor: "#FF6600",
+    backgroundColor: "orange",
     padding: 15,
     borderRadius: 5,
     alignItems: "center",
+    marginLeft: 10,
     flex: 1,
   },
+  cartButtonText: {
+    color: "orange",
+    fontWeight: "bold",
+  },
   buyButtonText: {
-    color: "#fff",
-    fontSize: 18,
+    color: "#FFF",
+    fontWeight: "bold",
   },
-  priceContainer: {
-    flexDirection: "row",
+  relatedProductItem: {
+    width: 100,
+    margin: 5,
     alignItems: "center",
-    marginBottom: 10,
-    justifyContent: "space-between", // Add this line
   },
-  priceWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-  }, // Add this new style
-  soldCount: {
+  relatedProductImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 5,
+  },
+  relatedProductName: {
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 5,
+  },
+  relatedProductPrice: {
     fontSize: 12,
     color: "#888",
-  }, // Add this new style
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    fontSize: 16,
+    color: "red",
+  },
 });
 
 export default ProductDetail;
